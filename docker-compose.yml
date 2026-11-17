@@ -1,0 +1,61 @@
+# ---------------------------------------------------------------------------
+# Databasus — sauvegarde PostgreSQL / MySQL / MariaDB / MongoDB (Apache 2.0)
+# Dépôt amont : https://github.com/databasus/databasus
+#
+# Aucun secret ici : toute la configuration vient de .env (voir .env.example).
+# Prérequis avant `up` : le réseau Docker externe doit exister (cf. README).
+# ---------------------------------------------------------------------------
+
+services:
+  databasus:
+    image: ${DATABASUS_IMAGE:-docker.io/databasus/databasus}:${DATABASUS_TAG:-v3.70.1}
+    container_name: ${DATABASUS_CONTAINER_NAME:-databasus}
+    restart: unless-stopped
+
+    # .env sert à deux choses :
+    #  - l'interpolation des ${...} de ce fichier (tag, port, réseau…) ;
+    #  - l'injection dans le conteneur des variables applicatives
+    #    (SMTP, OAuth, logs…), toutes optionnelles et commentées par défaut.
+    env_file:
+      - .env
+
+    environment:
+      # Fuseau horaire du conteneur. Non documenté par Databasus (cf. README,
+      # section « Points non documentés en amont »).
+      TZ: ${TZ:-Europe/Paris}
+
+    ports:
+      # Interface web. Port interne 4005 (EXPOSE 4005 dans l'image amont).
+      - "${DATABASUS_BIND_ADDRESS:-0.0.0.0}:${DATABASUS_PORT:-4005}:4005"
+
+    volumes:
+      # Volume nommé : survit à `docker compose down` puis `up`.
+      # /databasus-data contient la base interne (cluster PostgreSQL embarqué),
+      # la configuration, la clé de chiffrement et les journaux.
+      - databasus-data:/databasus-data
+
+    healthcheck:
+      # Commande officielle (identique au HEALTHCHECK de l'image amont).
+      test: ["CMD", "databasus", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      # La doc amont annonce un démarrage pouvant atteindre ~2 minutes.
+      start_period: 120s
+
+    # Laisse à l'instance PostgreSQL embarquée le temps de s'arrêter proprement.
+    stop_grace_period: 60s
+
+    networks:
+      # Réseau du projet : sortie internet (S3/B2/R2, notifications).
+      - default
+      # Réseau partagé avec les autres stacks à sauvegarder.
+      - databases
+
+volumes:
+  databasus-data:
+
+networks:
+  databases:
+    name: ${DATABASUS_DB_NETWORK:-databases}
+    external: true
