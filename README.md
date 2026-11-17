@@ -9,6 +9,7 @@ Contenu du dépôt :
 | Fichier | Rôle |
 | --- | --- |
 | `docker-compose.yml` | le service, sans aucun secret |
+| `dev-deploy.sh` | script d'amorçage : `.env`, réseau externe, validation, `up -d` |
 | `.env.example` | toutes les variables, valeurs factices, à copier en `.env` |
 | `.gitignore` | ignore `.env` |
 | `README.md` | ce document |
@@ -63,7 +64,20 @@ démarrage échoue avec `network databases declared as external, but could not b
 
 ```bash
 git clone <ce-dépôt> databasus && cd databasus
+./dev-deploy.sh
+```
+
+`dev-deploy.sh` est idempotent et fait tout l'amorçage : vérification de Docker,
+création de `.env` depuis `.env.example` s'il manque, création du réseau externe
+s'il manque, `docker compose config -q`, `pull`, `up -d`, puis attente de l'état
+« healthy » avant d'afficher l'URL. Options : `--no-pull`, `--no-wait`,
+`--help`. Relancez-le après chaque `git pull` ou changement de `DATABASUS_TAG`.
+
+Équivalent à la main :
+
+```bash
 cp .env.example .env          # adapter si besoin : port, tag, nom du réseau
+docker network create databases
 docker compose up -d
 docker compose ps             # attendre l'état « healthy » (jusqu'à ~2 min)
 ```
