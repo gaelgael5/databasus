@@ -1,0 +1,12 @@
+# Secrets et configuration locale : ne jamais versionner
+.env
+.env.*
+!.env.example
+
+# Artefacts locaux éventuels (si l'on repasse à un bind mount)
+databasus-data/
+*.log
+
+# Divers systèmes de fichiers
+.DS_Store
+Thumbs.db
